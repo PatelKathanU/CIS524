@@ -2,10 +2,7 @@
 
 import sys
 
-# -------------------------------------------------------------------
 #  Token and Lexer
-# -------------------------------------------------------------------
-
 # A small enum for token kinds
 (
     T_ID,       # identifier
@@ -38,7 +35,6 @@ import sys
     T_DUMMY,
 ) = range(28)
 
-# Keywords mapped to their token types
 KEYWORDS = {
     'if':    T_IF,
     'then':  T_THEN,
@@ -92,14 +88,9 @@ class Lexer:
 
     def get_next_token(self):
         self.skip_whitespace()
-
         ch = self.peek_char()
-
-        # End of file
         if ch == '\0':
             return Token(T_EOF, "EOF")
-
-        # Single-character tokens
         if ch == ';':
             self.get_char()
             return Token(T_SEMI, ';')
@@ -107,9 +98,7 @@ class Lexer:
             self.get_char()
             return Token(T_COLON, ':')
         if ch == '=':
-            # Could be '=' or '==' depending on next char
             self.get_char()
-            # Check if next char is '='
             if self.peek_char() == '=':
                 self.get_char()
                 return Token(T_EQEQ, '==')
@@ -132,15 +121,12 @@ class Lexer:
         if ch == '/':
             self.get_char()
             return Token(T_SLASH, '/')
-
-        # Two-character operators for comparisons
         if ch == '<':
             self.get_char()
             if self.peek_char() == '=':
                 self.get_char()
                 return Token(T_LE, '<=')
             elif self.peek_char() == '>':
-                # We interpret '<>' as not-equal
                 self.get_char()
                 return Token(T_NE, '<>')
             return Token(T_LT, '<')
@@ -149,19 +135,15 @@ class Lexer:
             if self.peek_char() == '=':
                 self.get_char()
                 return Token(T_GE, '>=')
-            return Token(T_GT, '>')
-
-        # Identifiers or keywords
+  
         if self.is_identifier_start(ch):
             start_pos = self.pos
             while self.is_identifier_part(self.peek_char()):
                 self.get_char()
             text = self.text[start_pos:self.pos]
-            # Check if it's a keyword
             tk = KEYWORDS.get(text.lower(), T_ID)
             return Token(tk, text)
-
-        # Number literal (could be integer or real)
+            
         if ch.isdigit():
             start_pos = self.pos
             has_dot = False
@@ -169,7 +151,6 @@ class Lexer:
                 nxt = self.peek_char()
                 if nxt == '.':
                     if has_dot:
-                        # second '.'? break or error
                         break
                     else:
                         has_dot = True
@@ -184,12 +165,10 @@ class Lexer:
         # If we get here, we have an unrecognized character => error
         self.get_char()
         # We can handle it as an error or skip it:
-        # For simplicity, let's treat that as a parse error later
-        return Token(T_EOF, "EOF")  # or some error token
+        return Token(T_EOF, "EOF")
 
-# -------------------------------------------------------------------
+
 #  Parser / Interpreter
-# -------------------------------------------------------------------
 
 class Parser:
     def __init__(self, lexer):
@@ -197,21 +176,18 @@ class Parser:
         self.token = None
         self.error_flag = False
 
-        # We read tokens in a "lookahead" style
         self.next_token()
 
     def next_token(self):
         self.token = self.lexer.get_next_token()
 
     def match(self, kind):
-        # If token kind matches, consume it;
-        # otherwise, set error_flag
+        # If token kind matches, consume it otherwise, set error_flag
         if self.token.kind == kind:
             self.next_token()
         else:
             self.error_flag = True
 
-    # For convenience in error-checking
     def current_kind(self):
         return self.token.kind
 
@@ -224,21 +200,12 @@ class Parser:
         while self.current_kind() != T_EOF:
             result = self.parse_let_in_end()
             if self.error_flag:
-                # If error occurred in this block, print "Error"
-                # Then reset error to parse the next block
+                # If error occurred in this block, print Error, then reset error to parse the next block
                 print("Error")
                 self._skip_until_next_let_end()
                 self.error_flag = False
             else:
-                # Otherwise print the result
-                # (Format float if real, or integer if int)
-                # We'll just print the Python float, but keep in mind
-                # the specification shows e.g. 314.16 (two decimals, etc.)
-                # We'll mimic the example by letting Python's default
-                # str() do the job. If you need specific formatting, adjust here.
                 print(result)
-            # Keep going for the next block
-        # Done
 
     def _skip_until_next_let_end(self):
         """
@@ -300,10 +267,9 @@ class Parser:
         # If error found, return None
         if self.error_flag:
             return None
-
         # Otherwise cast the result
         if cast_type == 'int':
-            return int(val)  # truncation
+            return int(val)
         else:
             return float(val)
 
@@ -311,11 +277,8 @@ class Parser:
         """
         <decl-list> ::= <decl> { <decl> }
         """
-        # We expect at least one <decl>.
         self.parse_decl(env)
-        # Then possibly more
         while not self.error_flag and self.current_kind() == T_ID:
-            # Because a new decl should start with 'id' if well-formed
             self.parse_decl(env)
 
     def parse_decl(self, env):
@@ -345,10 +308,8 @@ class Parser:
         # parse <expr>
         val = self.parse_expr(env)
 
-        # Expect ';'
         self.match(T_SEMI)
 
-        # If error, skip
         if self.error_flag:
             return
 
@@ -358,9 +319,7 @@ class Parser:
         else:
             env[varname] = ('real', float(val))
 
-    # ----------------------------------------------------------------
     #  Expression parsing
-    # ----------------------------------------------------------------
 
     def parse_expr(self, env):
         """
@@ -403,7 +362,7 @@ class Parser:
             self.error_flag = True
             return False
 
-        self.next_token()  # consume operator
+        self.next_token()
         right = self.parse_oprnd(env)
 
         if op == T_LT:
@@ -415,7 +374,7 @@ class Parser:
         elif op == T_GE:
             return left >= right
         elif op == T_EQEQ:
-            return abs(left - right) < 1e-15  # float comparison
+            return abs(left - right) < 1e-15
         elif op == T_NE:
             return abs(left - right) > 1e-15
         return False
@@ -429,12 +388,9 @@ class Parser:
         if self.current_kind() == T_ID:
             name = self.token.text
             self.next_token()
-            # Look up env
             if name not in env:
-                # undefined variable
                 self.error_flag = True
                 return 0.0
-            # Return numeric value
             return env[name][1]
         elif self.current_kind() == T_INT:
             val = int(self.token.text)
@@ -445,7 +401,6 @@ class Parser:
             self.next_token()
             return val
         else:
-            # error
             self.error_flag = True
             return 0.0
 
@@ -476,7 +431,6 @@ class Parser:
             if op == T_STAR:
                 value = value * rhs
             else:
-                # watch out for division by zero
                 if abs(rhs) < 1e-15:
                     self.error_flag = True
                     return 0.0
@@ -489,13 +443,11 @@ class Parser:
         """
         k = self.current_kind()
         if k == T_LPAREN:
-            # ( <expr> )
             self.match(T_LPAREN)
             val = self.parse_expr(env)
             self.match(T_RPAREN)
             return val
         elif k == T_ID:
-            # id
             name = self.token.text
             self.match(T_ID)
             if name not in env:
@@ -503,21 +455,17 @@ class Parser:
                 return 0.0
             return env[name][1]
         elif k == T_INT:
-            # integer number
             val = int(self.token.text)
             self.match(T_INT)
             return val
         elif k == T_REAL:
-            # real number
             val = float(self.token.text)
             self.match(T_REAL)
             return val
         elif k in (T_INT_TYPE, T_REAL_TYPE):
-            # <type> ( id ) => cast
             type_str = 'int' if (k == T_INT_TYPE) else 'real'
-            self.next_token()  # consume type token
+            self.next_token() 
             self.match(T_LPAREN)
-            # inside we expect an id
             if self.current_kind() != T_ID:
                 self.error_flag = True
                 return 0.0
@@ -529,13 +477,11 @@ class Parser:
                 self.error_flag = True
                 return 0.0
             original_value = env[var_name][1]
-            # cast
             if type_str == 'int':
                 return int(original_value)
             else:
                 return float(original_value)
         else:
-            # error
             self.error_flag = True
             return 0.0
 
