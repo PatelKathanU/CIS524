@@ -1,0 +1,15 @@
+let  x:int =  4 ;
+in
+int ( x + x * x )
+end ;
+let r : real  = 10.0 ;
+pi : real = 3.1416 ;
+in
+real ( pi * r * r )
+end ;
+let a : int = 3 ;
+b : real = 0.5 ;
+c : real = b * b ;
+in
+real ( if a > 5 then b + 1.1 else c )
+end ;
